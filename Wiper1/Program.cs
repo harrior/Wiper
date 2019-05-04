@@ -72,7 +72,7 @@ namespace Wiper1
             return sb.ToString();
         }
 
-        //Основная функция, перезвписывает файл
+        //Основная функция, перезаписывает файл
         static void WipeFile(string filename, byte method)
         {
             //method 0 - один проход random
@@ -277,7 +277,7 @@ namespace Wiper1
                     // Убиваем папки
                     errors.AddRange(RemoveDirs(fileList));
 
-                    if (errors.Count > 0) { MessageBox.Show("Don't delete " + errors.Count.ToString() + "objects"); }
+                    if ((errors.Count > 0) && (!hidemode)) { MessageBox.Show("Don't delete " + errors.Count.ToString() + "objects"); }
                 }
             }
             return 0;
