@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Win32;
+using System.IO;
 
 
 namespace Wiper1
@@ -12,48 +13,42 @@ namespace Wiper1
     class Program
     {
 
-        static int ReWriteByte(string filepath, byte val)
+        static void ReWriteByte(string filepath, byte val)
         {
-            System.IO.FileInfo fileinfo = new System.IO.FileInfo(filepath);
-            long filelength = fileinfo.Length;
-
-            System.IO.BinaryWriter writer = new System.IO.BinaryWriter(System.IO.File.Open(filepath, System.IO.FileMode.OpenOrCreate));
-
-            for (long i = 0; i < filelength; i++)
+            var fileinfo = new FileInfo(filepath);
+            
+            using (var writer = new BinaryWriter(File.Open(filepath, FileMode.OpenOrCreate)))
             {
-                writer.Write(val);
+                for (long i = 0; i < fileinfo.Length; i++)
+                {
+                    writer.Write(val);
+                }
             }
-
-            writer.Close();
-            return 0;
         }
 
         //Перезапись файла случайными данными
-        static int ReWriteRand(string filepath)
+        static void ReWriteRand(string filepath)
         {
-            System.IO.FileInfo fileinfo = new System.IO.FileInfo(filepath);
-            long filelength = fileinfo.Length;
+            var fileinfo = new FileInfo(filepath);
 
-            System.IO.BinaryWriter writer = new System.IO.BinaryWriter(System.IO.File.Open(filepath, System.IO.FileMode.OpenOrCreate));
             Random rand = new Random();
             byte[] val = new byte[1];
 
-            for (long i = 0; i < filelength; i++)
+            using (var writer = new BinaryWriter(File.Open(filepath, FileMode.OpenOrCreate)))
             {
-                rand.NextBytes(val);
-                writer.Write(val);
-            }
-
-            writer.Close();
-            return 0;
+                for (long i = 0; i < fileinfo.Length; i++)
+                {
+                    rand.NextBytes(val);
+                    writer.Write(val);
+                }
+            }  
         }
 
         //обнуление файла
         static void ReWriteEmpty(string filepath)
         {
-            System.IO.FileInfo fileinfo = new System.IO.FileInfo(filepath);
-            System.IO.BinaryWriter writer = new System.IO.BinaryWriter(System.IO.File.Open(filepath, System.IO.FileMode.Truncate));
-            writer.Close();
+            using (var writer = new BinaryWriter(File.Open(filepath, FileMode.Truncate))) { }
+            
         }
 
         //Генератор случайных имен файлов
@@ -102,15 +97,15 @@ namespace Wiper1
         static void RenameAndDeleteFile(string filename)
         {
             string newfilename = filename.Substring(0, filename.LastIndexOf('\\') + 1) + GenRandomString(5);
-            System.IO.File.Move(filename, newfilename);
-            System.IO.File.Delete(newfilename);
+            File.Move(filename, newfilename);
+            File.Delete(newfilename);
         }
 
         //рекурсивно обходит папку и составляет список файлов и директорий
         static List<string> getFileList(string DirName)
         {
-            List<string> fileList = System.IO.Directory.GetFiles(DirName).ToList<string>();
-            foreach (string dir in System.IO.Directory.GetDirectories(DirName))
+           var fileList = Directory.GetFiles(DirName).ToList<string>();
+            foreach (string dir in Directory.GetDirectories(DirName))
             {
                 fileList.Add(dir);
                 fileList.AddRange(getFileList(dir));
@@ -119,14 +114,14 @@ namespace Wiper1
         }
 
         static List<string> RemoveFiles(List<string> fileList, byte method) {
-            List<string> errors = new List<string>();
+            var errors = new List<string>();
 
             // Убиваем файлы
             foreach (string file in fileList)
             {
                 try
                 {
-                    if (System.IO.File.Exists(file))
+                    if (File.Exists(file))
                     {
                         WipeFile(file, method);
                         RenameAndDeleteFile(file);
@@ -142,17 +137,17 @@ namespace Wiper1
 
         static List<string> RemoveDirs(List<string> dirList)
         {
-            List<string> errors = new List<string>();
+            var errors = new List<string>();
             foreach (string dir in dirList)
             {
                 try
                 {
-                    if (System.IO.Directory.Exists(dir))
+                    if (Directory.Exists(dir))
                     {
                         Console.WriteLine(dir);
                         string newdirname = dir.Substring(0, dir.LastIndexOf('\\') + 1) + GenRandomString(5);
-                        System.IO.Directory.Move(dir, newdirname);
-                        System.IO.Directory.Delete(newdirname);
+                        Directory.Move(dir, newdirname);
+                        Directory.Delete(newdirname);
                     }
                 }
                 catch
@@ -173,13 +168,6 @@ namespace Wiper1
                 RegHandle = RegHandle.CreateSubKey("command");
                 RegHandle.SetValue("", Application.ExecutablePath + " \"%1\"");
 
-                /*RegHandle = Registry.ClassesRoot.OpenSubKey(@"\Drive\shell\", RegistryKeyPermissionCheck.ReadWriteSubTree);
-                RegHandle = RegHandle.CreateSubKey("Wiper");
-                RegHandle.SetValue("", "Secure Delete");
-                RegHandle.SetValue("Icon", Application.ExecutablePath);
-                RegHandle = RegHandle.CreateSubKey("command");
-                RegHandle.SetValue("", Application.ExecutablePath + " \"%1\"");*/
-
                 RegHandle = Registry.ClassesRoot.OpenSubKey(@"\*\shell\", RegistryKeyPermissionCheck.ReadWriteSubTree);
                 RegHandle = RegHandle.CreateSubKey("Wiper");
                 RegHandle.SetValue("", "Secure Delete");
@@ -187,7 +175,10 @@ namespace Wiper1
                 RegHandle = RegHandle.CreateSubKey("command");
                 RegHandle.SetValue("", Application.ExecutablePath + " \"%1\"");
             }
-            catch { }
+            catch
+            {
+                MessageBox.Show("Could not add item to menu. Try running the application again with administrator rights.", "Error");
+            }
         }
 
         static void DelMenu()
@@ -196,12 +187,13 @@ namespace Wiper1
             {
                 RegistryKey RegHandle = Registry.ClassesRoot.OpenSubKey(@"\Directory\shell\", RegistryKeyPermissionCheck.ReadWriteSubTree);
                 RegHandle.DeleteSubKeyTree("Wiper");
-                /*RegHandle = Registry.ClassesRoot.OpenSubKey(@"\Drive\shell\", RegistryKeyPermissionCheck.ReadWriteSubTree);
-                RegHandle.DeleteSubKeyTree("Wiper");*/
                 RegHandle = Registry.ClassesRoot.OpenSubKey(@"\*\shell\", RegistryKeyPermissionCheck.ReadWriteSubTree);
                 RegHandle.DeleteSubKeyTree("Wiper");
             }
-            catch { }
+            catch
+            {
+                MessageBox.Show("Could not remove item from menu. Try running the application again with administrator rights.", "Error");
+            }
         }
 
         static int Main(string[] args)
@@ -214,25 +206,25 @@ namespace Wiper1
                 List<String> arg = args.ToList<string>();
                 List<String> fileList = new List<string>();
 
-                foreach (string elem in args)
+                foreach (string option in args)
                 {
-                    if (String.Compare(elem, "-s") == 0)
+                    if (String.Compare(option, "-s") == 0)
                     {
                         Form1 form = new Form1();
                         form.ShowDialog();
                         return 0;
                     }
-                    else if (String.Compare(elem, "-i") == 0)
+                    else if (String.Compare(option, "-i") == 0)
                     {
                         AddMenu();
                         return 0;
                     }
-                    else if (String.Compare(elem, "-u") == 0)
+                    else if (String.Compare(option, "-u") == 0)
                     {
                         DelMenu();
                         return 0;
                     }
-                    else if (elem.IndexOf("-m") == 0)
+                    else if (option.IndexOf("-m") == 0)
                     {
                         try
                         {
@@ -245,29 +237,33 @@ namespace Wiper1
                             delmethod = 2;
                         }
                     }
-                    else if (String.Compare(elem, "-h") == 0)
+                    else if (String.Compare(option, "-h") == 0)
                     {
                         hidemode = true;
                     }
-                    // Рекурсивно ищем директории.
-                    else if (System.IO.Directory.Exists(elem))
+                }
+
+                // Рекурсивно ищем директории.
+                foreach (string path in args) { 
+                    if (System.IO.Directory.Exists(path))
                     {
-                        fileList.Add(elem);
-                        fileList.AddRange(getFileList(elem));
+                        fileList.Add(path);
+                        fileList.AddRange(getFileList(path));
                     }
-                    else if (System.IO.File.Exists(elem))
+                    else if (System.IO.File.Exists(path))
                     {
-                        fileList.Add(elem);
+                        fileList.Add(path);
                     }
                 }
 
-                DialogResult res = DialogResult.No;
+
+                var res = DialogResult.No;
                 if (fileList.Count <= 1){ hidemode = true; }
-                if (!hidemode) res = MessageBox.Show("Delete " + fileList.Count.ToString() + " objects?", "Shredder", MessageBoxButtons.YesNo);
+                if (!hidemode) { res = MessageBox.Show("Delete " + fileList.Count.ToString() + " objects?", "Shredder", MessageBoxButtons.YesNo); }
                 
                 if ((res == DialogResult.Yes) || (hidemode)) {
 
-                    List<string> errors = new List<string>();
+                    var errors = new List<string>();
 
                     fileList.Reverse(); //костыль
 
